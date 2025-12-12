@@ -47,21 +47,21 @@ const parser = new Parser({
 });
 
 const FEEDS = {
-  world: [
-    'https://feeds.bbci.co.uk/news/world/rss.xml',
-    'https://www.theguardian.com/world/rss',
-    'https://www.reutersagency.com/feed/?best-sectors=top-news&post_type=best',
-  ],
-  tech: [
-    'http://feeds.feedburner.com/TechCrunch/',
-    'http://feeds.arstechnica.com/arstechnica/index',
-    'https://www.theverge.com/rss/index.xml',
-  ],
-  finance: [
-    'https://www.cnbc.com/id/100003114/device/rss/rss.html',
-    'https://www.coindesk.com/arc/outboundfeeds/rss/',
-    'https://feeds.bloomberg.com/markets/news.rss',
-  ],
+    world: [
+        "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
+        "https://feeds.bbci.co.uk/news/world/rss.xml",
+        "https://www.theguardian.com/world/rss"
+    ],
+    tech: [
+        "https://feeds.arstechnica.com/arstechnica/technology-lab",
+        "https://www.theverge.com/rss/index.xml",
+        "https://www.wired.com/feed/rss"
+    ],
+    finance: [
+        "https://feeds.bbci.co.uk/news/business/rss.xml",
+        "https://www.investing.com/rss/news_25.rss",
+        "https://www.marketwatch.com/feeds/topstories"
+    ]
 };
 
 function extractImageFromHtml(html) {
