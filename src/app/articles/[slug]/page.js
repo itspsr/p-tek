@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, ExternalLink, Share2, Clock } from "lucide-react";
-import { getAllNews, formatDate } from "@/lib/rss";
+import { getAllNews, formatDate } from "../../../lib/rss";
 
 export const revalidate = 3600;
 
