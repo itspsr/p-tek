@@ -12,7 +12,7 @@ export default async function TechPage() {
     return (
         <div className="container mx-auto px-4 py-12">
             <div className="mb-12 border-b border-gray-800 pb-8">
-                <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-400 mb-4">
+                <h1 className="text-4xl font-black bg-gradient-to-r from-purple-400 to-pink-500 text-transparent bg-clip-text drop-shadow-lg">
                     Tech Systems
                 </h1>
                 <p className="text-xl text-gray-400">

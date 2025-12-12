@@ -36,6 +36,7 @@ export function sanitizeItem(item) {
 // RSS PARSER
 // -------------------------------------
 const parser = new Parser({
+  timeout: 8000,
   customFields: {
     item: [
       ["media:content", "mediaContent"],
@@ -57,9 +58,9 @@ const FEEDS = {
     "https://www.theguardian.com/world/rss",
   ],
   tech: [
-    "https://feeds.arstechnica.com/arstechnica/technology-lab",
     "https://www.theverge.com/rss/index.xml",
     "https://www.wired.com/feed/rss",
+    "https://feeds.arstechnica.com/arstechnica/technology-lab",
   ],
   finance: [
     "https://feeds.bbci.co.uk/news/business/rss.xml",
@@ -69,7 +70,7 @@ const FEEDS = {
 };
 
 // -------------------------------------
-// EXTRACT <img> FROM ARTICLE HTML
+// Extract image from HTML <img>
 // -------------------------------------
 function extractImageFromHtml(html) {
   if (!html) return null;
@@ -77,6 +78,8 @@ function extractImageFromHtml(html) {
   try {
     const $ = cheerio.load(html);
     const img = $("img").first().attr("src");
+
+    if (img && img.startsWith("//")) return "https:" + img;
     return img || null;
   } catch {
     return null;
@@ -84,27 +87,30 @@ function extractImageFromHtml(html) {
 }
 
 // -------------------------------------
-// OG IMAGE FETCH FALLBACK (FAST)
+// Try OG:image from article page
 // -------------------------------------
 async function tryFetchOgImage(url) {
   if (!url) return null;
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 1500); // FAST FIX
-    const res = await fetch(url, { signal: controller.signal });
+    const timeout = setTimeout(() => controller.abort(), 1500);
 
+    const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timeout);
+
     if (!res.ok) return null;
 
     const html = await res.text();
     const $ = cheerio.load(html);
 
-    return (
+    const og =
       $('meta[property="og:image"]').attr("content") ||
-      $('meta[name="og:image"]').attr("content") ||
-      null
-    );
+      $('meta[name="og:image"]').attr("content");
+
+    if (og && og.startsWith("//")) return "https:" + og;
+
+    return og || null;
   } catch {
     return null;
   }
@@ -122,15 +128,12 @@ export async function getCategoryNews(category, limit = 20) {
   const feedPromises = urls.map(async (url) => {
     try {
       const feed = await parser.parseURL(url);
-      return feed.items.map((it) => {
-        const cleaned = sanitizeItem(it);
-        return {
-          ...cleaned,
-          source: feed.title || "News",
-        };
-      });
+      return feed.items.map((it) => ({
+        ...sanitizeItem(it),
+        source: feed.title || "News",
+      }));
     } catch (e) {
-      console.error(`Feed error ${url}:`, e?.message);
+      console.error("Feed error:", url, e?.message);
       return [];
     }
   });
@@ -138,16 +141,18 @@ export async function getCategoryNews(category, limit = 20) {
   const results = await Promise.all(feedPromises);
   results.flat().forEach((i) => allItems.push(i));
 
-  // Newest first
+  // Sort by latest
   allItems.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
-  // Normalize items
+  // Normalize
   const normalized = await Promise.all(
     allItems.slice(0, limit).map(async (item) => {
+      // HTML <img> parsing
       const htmlImg =
         extractImageFromHtml(item.content) ||
         extractImageFromHtml(item.contentEncoded);
 
+      // RSS image fields
       let thumbnail =
         item.mediaContent?.$?.url ||
         item.mediaContent?.url ||
@@ -157,16 +162,17 @@ export async function getCategoryNews(category, limit = 20) {
         htmlImg ||
         null;
 
-      // LAST RESORT: OG IMAGE (Fast timeout)
+      // Try fetching OG:image
       if (!thumbnail && item.link) {
         const og = await tryFetchOgImage(item.link);
         if (og) thumbnail = og;
       }
 
-      // FINAL FALLBACK
-      if (!thumbnail)
+      // Final guaranteed fallback
+      if (!thumbnail) {
         thumbnail =
           "https://images.unsplash.com/photo-1522199710521-72d69614c702?auto=format&fit=crop&w=1200&q=60";
+      }
 
       return {
         id: Buffer.from(item.link || item.title).toString("base64").slice(0, 16),
@@ -178,8 +184,8 @@ export async function getCategoryNews(category, limit = 20) {
         date: item.pubDate || new Date().toISOString(),
         thumbnail,
         link: item.link || "#",
-        source: item.source || "Unknown",
-        category: category.toLowerCase(),
+        source: item.source,
+        category: category,
       };
     })
   );
@@ -188,7 +194,7 @@ export async function getCategoryNews(category, limit = 20) {
 }
 
 // -------------------------------------
-// ALL NEWS (HOME PAGE)
+// ALL NEWS / HOME PAGE
 // -------------------------------------
 export async function getAllNews() {
   const [world, tech, finance] = await Promise.all([
@@ -197,14 +203,11 @@ export async function getAllNews() {
     getCategoryNews("finance", 6),
   ]);
 
-  return {
-    world,
-    tech,
-    finance,
-    breaking: [...world, ...tech, ...finance]
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
-      .slice(0, 10),
-  };
+  const breaking = [...world, ...tech, ...finance]
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 10);
+
+  return { world, tech, finance, breaking };
 }
 
 export function formatDate(dateString) {

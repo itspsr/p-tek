@@ -1,47 +1,52 @@
 export default function Ticker({ news = [] }) {
     if (!news.length) return null;
 
-    // Flatten news items for clean mapping
-    const headlines = news.map(n => ({
-        title: n.title,
+    // clean headlines
+    const headlines = news.map((n) => ({
         id: n.id,
-        category: n.category
+        title: n.title,
+        category: n.category?.toUpperCase() || "NEWS",
     }));
 
+    // duplicate list for infinite loop
+    const items = [...headlines, ...headlines];
+
     return (
-        <div className="w-full bg-black/50 border-y border-white/5 backdrop-blur-sm overflow-hidden h-10 flex items-center relative">
-            
-            {/* Left Fade Gradient */}
-            <div className="absolute left-0 top-0 bottom-0 z-10 w-20 bg-gradient-to-r from-black via-black/80 to-transparent pointer-events-none"></div>
+        <div className="w-full h-10 bg-black/50 border-y border-white/10 backdrop-blur flex items-center overflow-hidden relative">
+
+            {/* LEFT FADE */}
+            <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-black to-transparent z-20 pointer-events-none"></div>
 
             {/* BREAKING LABEL */}
-            <div className="absolute left-0 z-20 px-4 h-full flex items-center bg-black border-r border-ptek-blue/30 text-xs font-bold text-ptek-blue uppercase tracking-widest">
+            <div className="absolute left-0 z-30 px-4 h-full flex items-center 
+                            bg-black border-r border-ptek-blue/40 
+                            text-xs font-mono font-bold text-ptek-blue tracking-widest uppercase">
                 BREAKING
             </div>
 
-            {/* Ticker Row */}
-            <div className="animate-ticker flex items-center gap-12 ml-[140px]">
-                {/* Loop Items */}
-                {headlines.map((item) => (
-                    <span key={item.id} className="text-sm text-gray-300 flex items-center gap-3">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                        <span className="font-mono text-gray-400 text-xs">[{item.category}]</span>
-                        <span className="font-medium">{item.title}</span>
-                    </span>
-                ))}
+            {/* MAIN MOVING STRIP */}
+            <div className="animate-ticker flex whitespace-nowrap gap-14 ml-[140px]">
 
-                {/* DUPLICATE COPY — Makes Infinite Loop Seamless */}
-                {headlines.map((item) => (
-                    <span key={`dup-${item.id}`} className="text-sm text-gray-300 flex items-center gap-3">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                        <span className="font-mono text-gray-400 text-xs">[{item.category}]</span>
+                {items.map((item, i) => (
+                    <span key={item.id + "-" + i} className="flex items-center gap-3 text-sm text-gray-300">
+
+                        {/* RED DOT */}
+                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+
+                        {/* CATEGORY */}
+                        <span className="text-xs font-mono text-gray-400">
+                            [{item.category}]
+                        </span>
+
+                        {/* TITLE */}
                         <span className="font-medium">{item.title}</span>
+
                     </span>
                 ))}
             </div>
 
-            {/* Right Fade Gradient */}
-            <div className="absolute right-0 top-0 bottom-0 z-10 w-20 bg-gradient-to-l from-black via-black/80 to-transparent pointer-events-none"></div>
+            {/* RIGHT FADE */}
+            <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-black to-transparent z-20 pointer-events-none"></div>
         </div>
     );
 }
