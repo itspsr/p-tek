@@ -6,8 +6,8 @@ export default function ShareButton({ url, title }) {
   function handleShare() {
     if (navigator.share) {
       navigator.share({
-        title: title,
-        url: url,
+        title,
+        url,
       });
     } else {
       navigator.clipboard.writeText(url);
@@ -18,7 +18,7 @@ export default function ShareButton({ url, title }) {
   return (
     <button
       onClick={handleShare}
-      className="text-gray-400 hover:text-white transition-colors flex items-center gap-2"
+      className="text-gray-400 hover:text-white transition flex items-center gap-2"
     >
       <Share2 size={20} />
     </button>

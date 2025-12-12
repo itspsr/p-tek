@@ -1,24 +1,40 @@
 import Parser from "rss-parser";
 import * as cheerio from "cheerio";
+import crypto from "crypto";
 import { MOCK_NEWS } from "./mockData";
 
-// REMOVE file props
+/* ---------------------------------------
+    CLEAN FEED ITEMS
+--------------------------------------- */
 function cleanObject(obj) {
   if (!obj || typeof obj !== "object") return obj;
+
   if (obj.File) delete obj.File;
   if (obj.file) delete obj.file;
 
-  for (const k of Object.keys(obj)) {
-    if (k.toLowerCase() === "file") delete obj[k];
-    else if (typeof obj[k] === "object") cleanObject(obj[k]);
+  for (const key of Object.keys(obj)) {
+    const val = obj[key];
+
+    if (key.toLowerCase() === "file") delete obj[key];
+    else if (val && typeof val === "object") cleanObject(val);
   }
   return obj;
 }
 
-export function sanitizeItem(i) {
-  return cleanObject(i);
+export function sanitizeItem(item) {
+  return cleanObject(item);
 }
 
+/* ---------------------------------------
+    UNIQUE HASH ID GENERATOR (FIX)
+--------------------------------------- */
+function generateId(url) {
+  return crypto.createHash("sha256").update(url).digest("hex").slice(0, 12);
+}
+
+/* ---------------------------------------
+    RSS PARSER
+--------------------------------------- */
 const parser = new Parser({
   timeout: 8000,
   customFields: {
@@ -32,11 +48,14 @@ const parser = new Parser({
   },
 });
 
+/* ---------------------------------------
+    RSS FEEDS
+--------------------------------------- */
 const FEEDS = {
   world: [
     "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
     "https://feeds.bbci.co.uk/news/world/rss.xml",
-    "https://www.theguardian.com/world/rss"
+    "https://www.theguardian.com/world/rss",
   ],
   tech: [
     "https://www.theverge.com/rss/index.xml",
@@ -50,23 +69,35 @@ const FEEDS = {
   ],
 };
 
-function extractImage(html) {
+/* ---------------------------------------
+    HTML IMAGE EXTRACTOR
+--------------------------------------- */
+function extractImageFromHtml(html) {
   if (!html) return null;
+
   try {
     const $ = cheerio.load(html);
-    let src =
+
+    const img =
       $("img").attr("src") ||
       $("img").attr("data-src") ||
       $("img").attr("data-original");
 
-    if (!src) return null;
-    return src.startsWith("//") ? "https:" + src : src;
+    if (img) return img.startsWith("//") ? "https:" + img : img;
+
+    const srcset = $("img").attr("srcset");
+    if (srcset) return srcset.split(",")[0].trim().split(" ")[0];
+
+    return null;
   } catch {
     return null;
   }
 }
 
-async function tryOg(url) {
+/* ---------------------------------------
+    OG:IMAGE FALLBACK
+--------------------------------------- */
+async function tryFetchOgImage(url) {
   if (!url) return null;
   try {
     const controller = new AbortController();
@@ -78,77 +109,91 @@ async function tryOg(url) {
     const html = await res.text();
     const $ = cheerio.load(html);
 
-    const og =
+    let og =
       $('meta[property="og:image"]').attr("content") ||
       $('meta[name="og:image"]').attr("content");
 
-    if (og?.startsWith("//")) return "https:" + og;
+    if (og && og.startsWith("//")) og = "https:" + og;
+
     return og || null;
   } catch {
     return null;
   }
 }
 
-// ⭐ FINAL PERFECT UNIQUE ID FUNCTION
-function generateStableId(link, title) {
-  const base = (link || title || Math.random().toString()).trim();
-  return Buffer.from(base).toString("base64").replace(/=/g, "").slice(0, 24);
-}
-
+/* ---------------------------------------
+    FETCH CATEGORY NEWS
+--------------------------------------- */
 export async function getCategoryNews(category, limit = 20) {
   const urls = FEEDS[category];
   if (!urls) return MOCK_NEWS[category] || [];
 
-  const all = [];
+  const allItems = [];
 
-  const groups = await Promise.all(
-    urls.map(async (u) => {
+  const results = await Promise.all(
+    urls.map(async (url) => {
       try {
-        const feed = await parser.parseURL(u);
+        const feed = await parser.parseURL(url);
         return feed.items.map((i) => ({
           ...sanitizeItem(i),
-          source: feed.title,
+          source: feed.title || "News",
         }));
-      } catch {
+      } catch (e) {
+        console.error("Feed error:", url, e?.message);
         return [];
       }
     })
   );
 
-  groups.flat().forEach((i) => all.push(i));
+  results.flat().forEach((i) => allItems.push(i));
 
-  all.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+  allItems.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
-  return await Promise.all(
-    all.slice(0, limit).map(async (item) => {
-      let img =
+  const normalized = await Promise.all(
+    allItems.slice(0, limit).map(async (item) => {
+      const htmlImg =
+        extractImageFromHtml(item.content) ||
+        extractImageFromHtml(item.contentEncoded);
+
+      let thumbnail =
         item.mediaContent?.$?.url ||
         item.mediaThumbnail?.$?.url ||
         item.enclosure?.url ||
-        extractImage(item.content) ||
-        extractImage(item.contentEncoded) ||
+        htmlImg ||
         null;
 
-      if (!img && item.link) img = await tryOg(item.link);
+      if (!thumbnail && item.link) {
+        thumbnail = await tryFetchOgImage(item.link);
+      }
 
-      if (!img)
-        img =
+      if (!thumbnail)
+        thumbnail =
           "https://images.unsplash.com/photo-1522199710521-72d69614c702?auto=format&fit=crop&w=1200&q=60";
 
+      if (thumbnail.startsWith("//")) thumbnail = "https:" + thumbnail;
+
       return {
-        id: generateStableId(item.link, item.title),
-        title: item.title,
-        summary: (item.summary || item.contentSnippet || "").slice(0, 250),
-        date: item.pubDate,
-        thumbnail: img,
+        id: generateId(item.link || item.title), // UNIQUE + FIXED
+        title: item.title || "Untitled",
+        summary:
+          (item.contentSnippet || item.summary || "")
+            .toString()
+            .slice(0, 250) + "...",
+        date: item.pubDate || new Date().toISOString(),
+        thumbnail,
         link: item.link,
-        category,
         source: item.source,
+        category,
       };
     })
   );
+
+  return normalized.length ? normalized : MOCK_NEWS[category] || [];
 }
 
+/* ---------------------------------------
+    HOMEPAGE
+--------------------------------------- */
 export async function getAllNews() {
   const [world, tech, finance] = await Promise.all([
     getCategoryNews("world", 6),
@@ -164,4 +209,16 @@ export async function getAllNews() {
       .sort((a, b) => new Date(b.date) - new Date(a.date))
       .slice(0, 10),
   };
+}
+
+export function formatDate(dateString) {
+  try {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return "Unknown date";
+  }
 }
