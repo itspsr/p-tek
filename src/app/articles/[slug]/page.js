@@ -2,6 +2,17 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft, ExternalLink, Share2, Clock } from 'lucide-react';
 import { getAllNews, formatDate } from '../../../lib/rss';
+import { getAllNews } from "@/lib/rss";
+
+export async function generateStaticParams() {
+  const { world, tech, finance } = await getAllNews();
+
+  const all = [...world, ...tech, ...finance];
+
+  return all.map((item) => ({
+    slug: item.id,
+  }));
+}
 
 export const revalidate = 3600;
 
