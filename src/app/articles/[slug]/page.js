@@ -1,69 +1,66 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, ExternalLink, Share2, Clock } from "lucide-react";
+import { ArrowLeft, ExternalLink, Clock } from "lucide-react";
 import { getAllNews, formatDate } from "../../../lib/rss";
+import ShareButton from "../../components/ShareButton";
 
 export const revalidate = 3600;
 
-// -------------------------------
-// generateStaticParams (ONLY ONCE)
-// -------------------------------
+/* ---------------------------------------------------
+   1) STATIC PARAMS
+--------------------------------------------------- */
 export async function generateStaticParams() {
-  try {
-    const { world, tech, finance } = await getAllNews();
-    const all = [...(world || []), ...(tech || []), ...(finance || [])];
+  const { world, tech, finance } = await getAllNews();
+  const all = [...world, ...tech, ...finance];
 
-    return all.map((item) => ({
-      slug: item.id,
-    }));
-  } catch (err) {
-    console.error("generateStaticParams error:", err);
-    return [];
-  }
+  return all.map((item) => ({
+    slug: encodeURIComponent(item.link),   // FIXED
+  }));
 }
 
-// -------------------------------
-// LOAD ARTICLE
-// -------------------------------
+/* ---------------------------------------------------
+   2) GET SINGLE ARTICLE
+--------------------------------------------------- */
 async function getArticle(slug) {
-  try {
-    const { world, tech, finance } = await getAllNews();
-    const all = [...(world || []), ...(tech || []), ...(finance || [])];
-    return all.find((a) => a.id === slug) || null;
-  } catch (err) {
-    console.error("getArticle error:", err);
-    return null;
-  }
+  const { world, tech, finance } = await getAllNews();
+  const all = [...world, ...tech, ...finance];
+
+  // Decode stored slug
+  const realSlug = decodeURIComponent(slug);
+
+  return all.find((a) => a.link === realSlug) || null; // FIXED MATCH
 }
 
-// Small helper to strip HTML from summary
-function stripHtml(input = "") {
-  return input.replace(/<[^>]*>?/gm, "").trim();
-}
-
-// -------------------------------
-// PAGE METADATA
-// -------------------------------
+/* ---------------------------------------------------
+   3) METADATA
+--------------------------------------------------- */
 export async function generateMetadata({ params }) {
   const article = await getArticle(params.slug);
-  if (!article) return { title: "Article Not Found | P-TEK" };
+
+  if (!article) {
+    return {
+      title: "Article Not Found | P-TEK Intelligence",
+    };
+  }
 
   return {
     title: `${article.title} | P-TEK Intelligence`,
-    description: stripHtml(article.summary || ""),
+    description: article.summary,
   };
 }
 
-// -------------------------------
-// PAGE COMPONENT
-// -------------------------------
+/* ---------------------------------------------------
+   4) PAGE
+--------------------------------------------------- */
 export default async function ArticlePage({ params }) {
   const article = await getArticle(params.slug);
 
   if (!article) {
     return (
       <div className="min-h-[50vh] flex flex-col items-center justify-center p-4 text-center">
-        <h1 className="text-2xl font-bold text-white mb-4">Article Not Found</h1>
+        <h1 className="text-2xl font-bold text-white mb-4">
+          Article Not Found
+        </h1>
         <Link
           href="/"
           className="px-6 py-2 bg-ptek-blue text-black font-bold rounded-full hover:bg-white transition-colors"
@@ -74,17 +71,9 @@ export default async function ArticlePage({ params }) {
     );
   }
 
-  // Normalize thumbnail and provide final fallback
-  let safeThumbnail = article.thumbnail || "/fallback.jpg";
-  if (typeof safeThumbnail === "string" && safeThumbnail.startsWith("//")) {
-    safeThumbnail = "https:" + safeThumbnail;
-  }
-  if (!/^https?:\/\//i.test(safeThumbnail)) {
-    safeThumbnail = "/fallback.jpg";
-  }
-
   return (
     <article className="container mx-auto px-4 py-12 max-w-4xl animate-fade-in">
+      {/* BACK */}
       <Link
         href="/"
         className="inline-flex items-center text-gray-400 hover:text-white transition-colors text-sm"
@@ -93,37 +82,42 @@ export default async function ArticlePage({ params }) {
         Back to Feed
       </Link>
 
-      <h1 className="text-3xl font-bold text-white mt-6 mb-4">{article.title}</h1>
+      {/* TITLE */}
+      <h1 className="text-3xl md:text-4xl font-bold text-white mt-6 mb-4">
+        {article.title}
+      </h1>
 
-      <div className="flex items-center gap-4 text-gray-400 mb-4">
-        <span className="px-3 py-1 bg-ptek-blue/10 border border-ptek-blue/20 rounded">
+      {/* META */}
+      <div className="flex items-center gap-4 text-gray-400 mb-6">
+        <span className="px-3 py-1 bg-ptek-blue/10 border border-ptek-blue/20 rounded text-sm">
           {article.category}
         </span>
-
         <span className="flex items-center gap-2 text-gray-400">
           <Clock size={14} />
           {formatDate(article.date)}
         </span>
       </div>
 
+      {/* IMAGE */}
       <div className="relative w-full aspect-video rounded-2xl overflow-hidden mb-8 border border-white/10 shadow-2xl">
         <Image
-          src={safeThumbnail}
+          src={article.thumbnail || "/fallback.jpg"}
           alt={article.title}
           fill
           className="object-cover"
-          priority={false}
-          // avoid Next.js image optimization on servers without sharp:
-          unoptimized
+          priority
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
       </div>
 
-      <p className="text-gray-300 leading-relaxed whitespace-pre-line">
-        {stripHtml(article.summary || article.content || "No preview available.")}
+      {/* SUMMARY */}
+      <p className="text-gray-300 leading-relaxed whitespace-pre-line text-lg">
+        {article.summary}
       </p>
 
+      {/* ACTIONS */}
       <div className="mt-10 flex items-center justify-between">
+        {/* OPEN ORIGINAL */}
         <a
           href={article.link}
           target="_blank"
@@ -134,28 +128,8 @@ export default async function ArticlePage({ params }) {
           <ExternalLink size={18} className="ml-2" />
         </a>
 
-        <button
-          className="text-gray-400 hover:text-white transition-colors"
-          onClick={() => {
-            // client-side share will only work when this component is used as a client component.
-            try {
-              if (navigator.share) {
-                navigator.share({
-                  title: article.title,
-                  url: article.link,
-                });
-              } else {
-                // fallback: copy link
-                navigator.clipboard?.writeText(article.link);
-                alert("Link copied to clipboard");
-              }
-            } catch (e) {
-              // silent
-            }
-          }}
-        >
-          <Share2 size={20} />
-        </button>
+        {/* SHARE BUTTON */}
+        <ShareButton url={article.link} title={article.title} />
       </div>
     </article>
   );
