@@ -1,8 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, ExternalLink, Clock } from "lucide-react";
-import { getAllNews, formatDate } from "../../../lib/rss";
 import ShareButton from "../../components/ShareButton";
+import { getAllNews, formatDate } from "../../../lib/rss";
 
 export const revalidate = 3600;
 
@@ -12,22 +12,25 @@ export async function generateStaticParams() {
   const all = [...world, ...tech, ...finance];
 
   return all.map((item) => ({
-    slug: encodeURIComponent(item.link),
+    slug: item.id, // NO ENCODING
   }));
 }
 
-/* GET SINGLE ARTICLE */
+/* FIND ARTICLE */
 async function getArticle(slug) {
   const { world, tech, finance } = await getAllNews();
   const all = [...world, ...tech, ...finance];
 
-  return all.find((a) => encodeURIComponent(a.link) === slug) || null;
+  return all.find((a) => a.id === slug) || null; // EXACT MATCH
 }
 
 /* META */
 export async function generateMetadata({ params }) {
   const article = await getArticle(params.slug);
-  if (!article) return { title: "Not Found | P-TEK Intelligence" };
+
+  if (!article) {
+    return { title: "Article Not Found | P-TEK Intelligence" };
+  }
 
   return {
     title: `${article.title} | P-TEK Intelligence`,
@@ -41,39 +44,45 @@ export default async function ArticlePage({ params }) {
 
   if (!article) {
     return (
-      <div className="min-h-[50vh] flex items-center justify-center flex-col text-center">
-        <h1 className="text-white text-2xl mb-4">Article Not Found</h1>
-        <Link href="/" className="bg-ptek-blue px-6 py-2 rounded-full text-black font-bold">
+      <div className="min-h-[50vh] flex flex-col items-center justify-center p-4 text-center">
+        <h1 className="text-2xl font-bold text-white mb-4">Article Not Found</h1>
+        <Link href="/" className="px-6 py-2 bg-ptek-blue text-black font-bold rounded-full">
           Return to HQ
         </Link>
       </div>
     );
   }
 
-  const img = article.thumbnail || "/fallback.jpg";
+  const img =
+    article.thumbnail?.startsWith("//")
+      ? "https:" + article.thumbnail
+      : article.thumbnail || "/fallback.jpg";
 
   return (
-    <article className="container mx-auto max-w-4xl px-4 py-12">
-      <Link href="/" className="text-gray-400 text-sm flex items-center mb-4 hover:text-white">
-        <ArrowLeft className="mr-2" size={16} /> Back to Feed
+    <article className="container mx-auto px-4 py-12 max-w-4xl">
+      <Link href="/" className="inline-flex items-center text-gray-400 hover:text-white text-sm mb-4">
+        <ArrowLeft size={16} className="mr-2" />
+        Back to Feed
       </Link>
 
-      <h1 className="text-white text-3xl md:text-4xl font-bold mb-4">
+      <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
         {article.title}
       </h1>
 
       <div className="flex items-center gap-4 text-gray-400 mb-6">
-        <span className="px-3 py-1 bg-ptek-blue/10 border border-ptek-blue/20 rounded text-sm">
+        <span className="px-3 py-1 bg-ptek-blue/10 border border-ptek-blue/20 rounded">
           {article.category}
         </span>
 
         <span className="flex items-center gap-2">
-          <Clock size={14} /> {formatDate(article.date)}
+          <Clock size={14} />
+          {formatDate(article.date)}
         </span>
       </div>
 
+      {/* IMAGE */}
       <div className="relative w-full aspect-video rounded-xl overflow-hidden mb-8 border border-white/10">
-        <Image src={img} alt={article.title} fill className="object-cover" />
+        <Image src={img} alt={article.title} fill className="object-cover" unoptimized />
       </div>
 
       <p className="text-gray-300 leading-relaxed text-lg whitespace-pre-line">
