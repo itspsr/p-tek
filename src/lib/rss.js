@@ -32,7 +32,6 @@ const FEEDS = {
     ]
 };
 
-// Heuristic to get image from simple HTML content
 function extractImageFromHtml(html) {
     if (!html) return null;
     try {
@@ -47,7 +46,7 @@ function extractImageFromHtml(html) {
 async function fetchOgImage(url) {
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000); // 2s timeout
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
 
         const res = await fetch(url, { signal: controller.signal });
         clearTimeout(timeoutId);
@@ -68,7 +67,6 @@ export async function getCategoryNews(category, limit = 20) {
 
     const allItems = [];
 
-    // Fetch all feeds in parallel with error handling
     const feedPromises = urls.map(async (url) => {
         try {
             const feed = await parser.parseURL(url);
@@ -82,10 +80,8 @@ export async function getCategoryNews(category, limit = 20) {
     const results = await Promise.all(feedPromises);
     results.flat().forEach(item => allItems.push(item));
 
-    // Sort by date (newest first)
     allItems.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
-    // Normalize and Limit
     const normalizedItems = await Promise.all(
         allItems.slice(0, limit).map(async (item, index) => {
             let thumbnail =
@@ -96,15 +92,8 @@ export async function getCategoryNews(category, limit = 20) {
                 extractImageFromHtml(item.contentEncoded) ||
                 '/fallback.jpg';
 
-            // Phase 2: If no thumbnail in RSS, try OG Image (Server-Side)
-            if (thumbnail === '/fallback.jpg' && item.link) {
-                // Only do this for top 3 to avoid massive sequential delays or run in parallel?
-                // For now, let's keep it snappy and fallback. 
-                // If we had a cache database we would store it.
-            }
-
             return {
-                id: Buffer.from(item.link || item.title).toString('base64').substring(0, 16), // Create stable ID from link
+                id: Buffer.from(item.link || item.title).toString('base64').substring(0, 16),
                 title: item.title,
                 summary: (item.contentSnippet || item.content || '').substring(0, 200) + '...',
                 date: item.pubDate,
@@ -116,7 +105,6 @@ export async function getCategoryNews(category, limit = 20) {
         })
     );
 
-    // If absolutely no items, fallback
     if (normalizedItems.length === 0) {
         return MOCK_NEWS[category] || [];
     }
@@ -137,4 +125,18 @@ export async function getAllNews() {
         finance,
         breaking: [...world, ...tech, ...finance].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10)
     };
+}
+
+/* ✅ ADD THIS BLOCK AT THE BOTTOM */
+export function formatDate(dateString) {
+    try {
+        return new Date(dateString).toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+        });
+    } catch (e) {
+        return "";
+    }
 }

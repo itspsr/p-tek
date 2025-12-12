@@ -1,12 +1,10 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft, ExternalLink, Share2, Clock } from 'lucide-react';
-import { getAllNews, timeAgo, formatDate } from '../../../lib/rss';
+import { getAllNews, formatDate } from '../../../lib/rss';
 
 export const revalidate = 3600;
 
-// Since we don't have a real DB, we fetch all news and find the one with the slug.
-// In a real app we'd fetch specific ID.
 async function getArticle(slug) {
     const { world, tech, finance } = await getAllNews();
     const all = [...world, ...tech, ...finance];
@@ -35,6 +33,9 @@ export default async function ArticlePage({ params }) {
             </div>
         );
     }
+
+    // NEXT-JS SAFE IMAGE URL FALLBACK
+    const safeThumbnail = article.thumbnail || "/fallback.jpg";
 
     return (
         <article className="container mx-auto px-4 py-12 max-w-4xl animate-fade-in">
@@ -66,14 +67,14 @@ export default async function ArticlePage({ params }) {
                 </div>
             </div>
 
+            {/* FIXED IMAGE (NO onError, NEXT-SAFE) */}
             <div className="relative w-full aspect-video rounded-2xl overflow-hidden mb-12 border border-white/10 shadow-2xl">
                 <Image
-                    src={article.thumbnail}
+                    src={safeThumbnail}
                     alt={article.title}
                     fill
                     className="object-cover"
                     priority
-                    onError={(e) => { e.currentTarget.src = "/fallback.jpg" }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none"></div>
             </div>
@@ -85,7 +86,9 @@ export default async function ArticlePage({ params }) {
 
                 <div className="bg-white/5 border border-white/10 rounded-xl p-8 text-center my-12">
                     <h3 className="text-lg font-bold text-white mb-2">Read Full Story</h3>
-                    <p className="text-gray-400 mb-6 text-sm">Continue reading this article at the original source.</p>
+                    <p className="text-gray-400 mb-6 text-sm">
+                        Continue reading this article at the original source.
+                    </p>
                     <a
                         href={article.link}
                         target="_blank"
