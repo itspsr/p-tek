@@ -2,28 +2,6 @@ import Parser from 'rss-parser';
 import * as cheerio from 'cheerio';
 import { MOCK_NEWS } from './mockData';
 
-// -------------------------------
-//  SANITIZER – FIXES YOUR BUILD
-// -------------------------------
-function sanitizeItem(item) {
-    // Remove any browser-only fields (these break Next.js SSR)
-    if (item?.File) delete item.File;
-    if (item?.file) delete item.file;
-
-    if (item?.enclosure) {
-        if (item.enclosure.File) delete item.enclosure.File;
-        if (item.enclosure.file) delete item.enclosure.file;
-    }
-
-    if (item?.mediaContent?.File) delete item.mediaContent.File;
-    if (item?.mediaThumbnail?.File) delete item.mediaThumbnail.File;
-
-    return item;
-}
-
-// -------------------------------
-//   RSS PARSER CONFIG
-// -------------------------------
 const parser = new Parser({
     customFields: {
         item: [
@@ -36,9 +14,6 @@ const parser = new Parser({
     },
 });
 
-// -------------------------------
-//      NEWS FEED URLS
-// -------------------------------
 const FEEDS = {
     world: [
         'https://feeds.bbci.co.uk/news/world/rss.xml',
@@ -57,27 +32,42 @@ const FEEDS = {
     ]
 };
 
-// -------------------------------
-//   IMAGE EXTRACTION HELPERS
-// -------------------------------
+// REMOVE ALL File objects recursively
+function cleanObject(obj) {
+    if (!obj || typeof obj !== "object") return obj;
+
+    if (obj.File) delete obj.File;
+    if (obj.file) delete obj.file;
+
+    for (const key of Object.keys(obj)) {
+        const val = obj[key];
+
+        if (typeof val === "object") cleanObject(val);
+
+        if (key === "$" && val) {
+            if (val.File) delete val.File;
+            if (val.file) delete val.file;
+        }
+    }
+
+    return obj;
+}
+
+function sanitizeItem(item) {
+    return cleanObject(item);
+}
+
+// Extract image from HTML content
 function extractImageFromHtml(html) {
     if (!html) return null;
     try {
         const $ = cheerio.load(html);
-        const img = $('img').first().attr('src');
-        return img || null;
+        return $('img').first().attr('src') || null;
     } catch {
         return null;
     }
 }
 
-// Fetching OG image is removed to avoid SSR breaking issues
-// If needed later, it will be implemented with caching.
-
-
-// -------------------------------
-//   FETCH CATEGORY NEWS
-// -------------------------------
 export async function getCategoryNews(category, limit = 20) {
     const urls = FEEDS[category];
     if (!urls) return MOCK_NEWS[category] || [];
@@ -87,33 +77,28 @@ export async function getCategoryNews(category, limit = 20) {
     const feedPromises = urls.map(async (url) => {
         try {
             const feed = await parser.parseURL(url);
-            return feed.items.map(raw => {
-                const item = sanitizeItem(raw); // IMPORTANT FIX HERE
-                return { ...item, source: feed.title || 'News' };
-            });
-        } catch (e) {
-            console.error(`Error fetching feed ${url}:`, e.message);
+            return feed.items.map(item => sanitizeItem({ ...item, source: feed.title || 'News' }));
+        } catch {
             return [];
         }
     });
 
     const results = await Promise.all(feedPromises);
-    results.flat().forEach(i => allItems.push(i));
+    results.flat().forEach(item => allItems.push(item));
 
-    // Sort by newest
     allItems.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
-    // Normalize final items
-    const normalizedItems = await Promise.all(
-        allItems.slice(0, limit).map(async (raw) => {
-            const item = sanitizeItem(raw); // FIX HERE TOO
+    const normalized = await Promise.all(
+        allItems.slice(0, limit).map(async (item) => {
+            const htmlImg =
+                extractImageFromHtml(item.content) ||
+                extractImageFromHtml(item.contentEncoded);
 
-            let thumbnail =
+            const thumbnail =
                 item.mediaContent?.$?.url ||
                 item.mediaThumbnail?.$?.url ||
                 item.enclosure?.url ||
-                extractImageFromHtml(item.content) ||
-                extractImageFromHtml(item.contentEncoded) ||
+                htmlImg ||
                 '/fallback.jpg';
 
             return {
@@ -129,16 +114,10 @@ export async function getCategoryNews(category, limit = 20) {
         })
     );
 
-    if (normalizedItems.length === 0) {
-        return MOCK_NEWS[category] || [];
-    }
-
-    return normalizedItems;
+    if (normalized.length === 0) return MOCK_NEWS[category] || [];
+    return normalized;
 }
 
-// -------------------------------
-//   FETCH ALL NEWS + BREAKING
-// -------------------------------
 export async function getAllNews() {
     const [world, tech, finance] = await Promise.all([
         getCategoryNews('world', 6),
@@ -154,4 +133,17 @@ export async function getAllNews() {
             .sort((a, b) => new Date(b.date) - new Date(a.date))
             .slice(0, 10)
     };
+}
+
+// FIXED formatDate EXPORT
+export function formatDate(dateString) {
+    try {
+        return new Date(dateString).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric"
+        });
+    } catch {
+        return "Unknown date";
+    }
 }
