@@ -2,7 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, ExternalLink, Clock } from "lucide-react";
 import ShareButton from "../../components/ShareButton";
-import { getAllNews, formatDate } from "../../../lib/rss";
+import { getAllNews } from "../../../lib/rss";
+import { formatDate } from "../../../lib/utils";
 
 export const revalidate = 3600;
 
