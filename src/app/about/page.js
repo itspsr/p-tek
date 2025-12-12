@@ -1,31 +1,40 @@
+export const metadata = {
+  title: "About | P-TEK Intelligence",
+  description: "The autonomous intelligence engine transforming real-time global reporting.",
+};
+
 export default function AboutPage() {
-    return (
-        <div className="container mx-auto px-4 py-20 animate-fade-in max-w-3xl text-center">
-            <h1 className="text-4xl md:text-6xl font-bold text-white mb-8">About P-TEK</h1>
+  return (
+    <div className="container mx-auto px-4 py-20 text-gray-300 page-transition">
+      <h1 className="text-5xl font-bold mb-6">
+        <span className="text-ptek-blue">About</span> P-TEK Intelligence
+      </h1>
 
-            <div className="prose prose-invert prose-lg mx-auto">
-                <p>
-                    P-TEK Intelligence is a next-generation news aggregation platform designed to deliver
-                    high-speed, verified global intelligence to decision-makers and enthusiasts alike.
-                </p>
-                <p>
-                    Built on advanced algorithms and powered by real-time data ingestion, our system scans
-                    thousands of sources to bring you the most relevant updates in World Politics, Technology,
-                    and Global Finance.
-                </p>
-                <p>
-                    We believe in a future where information is instantaneous, transparent, and accessible.
-                    Our mission is to declutter the noise and provide pure signal.
-                </p>
-            </div>
+      <p className="text-lg text-gray-400 max-w-3xl leading-relaxed mb-10">
+        P-TEK Intelligence is an autonomous, algorithm-driven news engine crafted to deliver
+        the fastest, most accurate intelligence signals across World Affairs, Technology, and Finance.
+        Our system continuously processes verified sources, extracts insights, and presents
+        real-time updates with unmatched clarity and speed.
+      </p>
 
-            <div className="mt-12 p-8 border border-white/10 rounded-2xl bg-white/5 backdrop-blur">
-                <h3 className="text-xl font-bold text-ptek-blue mb-4">Privacy First</h3>
-                <p className="text-gray-400 text-sm">
-                    We do not track you. We do not sell your data. P-TEK operates on a strictly anonymous
-                    read-only basis. Your intellectual sovereignty is paramount.
-                </p>
-            </div>
-        </div>
-    );
+      <div className="bg-white/5 border border-white/10 p-8 rounded-xl backdrop-blur-lg max-w-3xl shadow-xl space-y-6">
+        <h2 className="text-2xl font-semibold text-white">Our Mission</h2>
+        <p className="text-gray-400 leading-relaxed">
+          To engineer a next-generation intelligence platform capable of decoding global events in
+          real time — empowering analysts, investors, journalists, and everyday users with instant clarity.
+        </p>
+
+        <h2 className="text-2xl font-semibold text-white">Why P-TEK?</h2>
+        <p className="text-gray-400 leading-relaxed">
+          Unlike traditional news websites, P-TEK Intelligence uses automated pipelines,
+          natural-language extraction, anomaly detection, and multi-feed redundancy to produce
+          high-accuracy intelligence with zero delay.
+        </p>
+      </div>
+
+      <div className="mt-16 text-sm text-gray-500">
+        Engineered & Maintained by <span className="text-ptek-blue font-semibold">Pratik Kumar</span>.
+      </div>
+    </div>
+  );
 }

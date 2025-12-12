@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* ---------------------------------- */
-/* ROOT COLORS (auto dark mode)       */
+/* ROOT COLORS (Auto Dark Mode)       */
 /* ---------------------------------- */
 :root {
   --foreground-rgb: 237, 237, 237;
@@ -12,7 +12,7 @@
   color-scheme: dark;
 }
 
-/* Smooth global scrolling */
+/* Smooth global scroll */
 html {
   scroll-behavior: smooth;
 }
@@ -35,19 +35,24 @@ body {
 /* COMPONENT CLASSES                  */
 /* ---------------------------------- */
 @layer components {
+
+  /* Glass Card */
   .glass-card {
     @apply bg-white/5 border border-white/10 backdrop-blur-md rounded-xl 
            hover:bg-white/10 transition-all duration-300 shadow-lg;
   }
 
+  /* Text Glow */
   .text-glow {
     text-shadow: 0 0 20px rgba(79, 172, 254, 0.5);
   }
 
+  /* Neon Outline */
   .neon-border {
     box-shadow: 0 0 15px rgba(0, 242, 254, 0.25);
   }
 
+  /* Glow Button */
   .btn-glow {
     @apply transition-all duration-300;
   }
@@ -57,7 +62,29 @@ body {
 }
 
 /* ---------------------------------- */
-/* PAGE TRANSITION FADE EFFECT        */
+/* HERO NEON GLOW TEXT                */
+/* ---------------------------------- */
+.hero-gradient {
+  background: linear-gradient(90deg, #2ab8ff 0%, #6b4bff 40%, #d94bff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-outer-glow {
+  text-shadow:
+    0 0 25px rgba(0, 200, 255, 0.65),
+    0 0 45px rgba(120, 0, 255, 0.55),
+    0 0 80px rgba(255, 0, 220, 0.4);
+}
+
+.hero-inner-glow {
+  text-shadow:
+    0 0 5px rgba(255, 255, 255, 0.25),
+    0 0 12px rgba(0, 150, 255, 0.35);
+}
+
+/* ---------------------------------- */
+/* PAGE FADE-IN TRANSITION            */
 /* ---------------------------------- */
 .page-transition {
   animation: fadeIn 0.6s ease-out;
@@ -65,7 +92,7 @@ body {
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(15px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ---------------------------------- */
@@ -74,17 +101,11 @@ body {
 .skeleton {
   @apply bg-white/10 rounded-lg animate-pulse;
 }
-.skeleton-image {
-  height: 200px;
-  width: 100%;
-}
-.skeleton-text {
-  height: 14px;
-  margin-top: 8px;
-}
+.skeleton-image { height: 200px; width: 100%; }
+.skeleton-text { height: 14px; margin-top: 8px; }
 
 /* ---------------------------------- */
-/* TICKER ANIMATION (Smooth)          */
+/* TICKER (Smooth + Fixed Speed)      */
 /* ---------------------------------- */
 @keyframes ticker {
   0%   { transform: translateX(100%); }
@@ -92,14 +113,14 @@ body {
 }
 
 .animate-ticker {
-  animation: ticker 45s linear infinite; 
+  animation: ticker 45s linear infinite;
   white-space: nowrap;
   display: inline-flex;
   gap: 3rem;
   will-change: transform;
 }
 
-/* Mobile — slower */
+/* Mobile: slower for readability */
 @media (max-width: 768px) {
   .animate-ticker {
     animation-duration: 60s;
@@ -113,9 +134,9 @@ body {
   position: fixed;
   bottom: 30px;
   right: 30px;
-  background: rgba(0, 242, 254, 0.8);
+  background: rgba(0, 242, 254, 0.9);
   color: black;
-  padding: 10px 12px;
+  padding: 11px 13px;
   border-radius: 50%;
   font-size: 22px;
   cursor: pointer;
@@ -126,6 +147,6 @@ body {
 
 .go-top-btn:hover {
   background: rgba(0, 242, 254, 1);
-  box-shadow: 0 0 15px rgba(0, 242, 254, 0.7);
+  box-shadow: 0 0 18px rgba(0, 242, 254, 0.7);
   transform: translateY(-5px);
 }

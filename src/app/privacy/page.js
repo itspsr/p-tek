@@ -1,9 +1,9 @@
 "use client";
-import { ShieldCheck, Lock, Eye, Database, Globe2 } from "lucide-react";
+import { ShieldCheck, Lock, Eye, Database, Globe2, Linkedin } from "lucide-react";
 
 export default function PrivacyPage() {
     return (
-        <div className="container mx-auto px-4 py-20 text-gray-300">
+        <div className="container mx-auto px-4 py-20 text-gray-300 page-transition">
             
             {/* HEADER */}
             <div className="max-w-4xl mx-auto mb-16">
@@ -19,109 +19,119 @@ export default function PrivacyPage() {
             <div className="space-y-20 max-w-4xl mx-auto">
 
                 {/* SECTION 1 */}
-                <section className="bg-black/40 p-8 rounded-2xl border border-white/10 backdrop-blur-xl hover:border-ptek-blue/30 transition-all duration-300">
-                    <div className="flex items-center gap-3 mb-4">
+                <section className="ptek-card">
+                    <div className="section-title">
                         <ShieldCheck className="text-ptek-blue" size={28} />
-                        <h2 className="text-2xl font-bold text-white">1. Overview</h2>
+                        <h2>1. Overview</h2>
                     </div>
-                    <p className="text-gray-400 leading-relaxed">
-                        P-TEK Intelligence is committed to maintaining the confidentiality, 
-                        integrity, and security of your personal information. Our systems 
-                        prioritize transparency, minimal data collection, and responsible usage.
+                    <p className="section-text">
+                        P-TEK Intelligence is committed to ensuring the confidentiality,
+                        integrity, and security of your information. We focus on
+                        transparency, minimal data collection, and responsible technology usage.
                     </p>
                 </section>
 
                 {/* SECTION 2 */}
-                <section className="bg-black/40 p-8 rounded-2xl border border-white/10 backdrop-blur-xl hover:border-ptek-blue/30 transition-all duration-300">
-                    <div className="flex items-center gap-3 mb-4">
+                <section className="ptek-card">
+                    <div className="section-title">
                         <Database className="text-ptek-blue" size={28} />
-                        <h2 className="text-2xl font-bold text-white">2. Data We Collect</h2>
+                        <h2>2. Data We Collect</h2>
                     </div>
 
-                    <ul className="list-disc list-inside text-gray-400 space-y-2 leading-relaxed">
-                        <li>Basic analytics (page views, device type, time spent)</li>
-                        <li>No passwords or financial details are collected</li>
+                    <ul className="section-list">
+                        <li>Basic analytics (page activity, device type, interaction time)</li>
+                        <li>No passwords or financial information is collected</li>
                         <li>No sensitive personal data is stored</li>
-                        <li>Search queries used within the platform (non-identifying)</li>
+                        <li>Platform search queries (non-identifiable)</li>
                     </ul>
 
-                    <p className="text-gray-500 mt-2 italic">
-                        *We do NOT sell or trade your data. Ever.*
+                    <p className="italic text-gray-500 mt-2">
+                        *P-TEK NEVER sells or shares your data with advertisers.*
                     </p>
                 </section>
 
                 {/* SECTION 3 */}
-                <section className="bg-black/40 p-8 rounded-2xl border border-white/10 backdrop-blur-xl hover:border-ptek-blue/30 transition-all duration-300">
-                    <div className="flex items-center gap-3 mb-4">
+                <section className="ptek-card">
+                    <div className="section-title">
                         <Lock className="text-ptek-blue" size={28} />
-                        <h2 className="text-2xl font-bold text-white">3. How Your Data Is Protected</h2>
+                        <h2>3. How Your Data is Protected</h2>
                     </div>
 
-                    <p className="text-gray-400 leading-relaxed">
-                        Our infrastructure uses multi-layer encryption, secure access protocols, 
-                        and continuous monitoring. All logs and analytics are anonymized to ensure 
-                        that your identity remains protected.
+                    <p className="section-text">
+                        All collected information is anonymized and processed over secure 
+                        encrypted channels. Our systems use enterprise-grade protection techniques.
                     </p>
 
-                    <ul className="list-disc list-inside text-gray-400 mt-4 space-y-2">
-                        <li>Encrypted transmission (HTTPS/TLS 1.3)</li>
-                        <li>Firewall-protected servers</li>
-                        <li>Strict access controls</li>
-                        <li>Routine security audits</li>
+                    <ul className="section-list">
+                        <li>Encrypted requests (HTTPS / TLS 1.3)</li>
+                        <li>Firewall-protected cloud infrastructure</li>
+                        <li>Zero-access security for private logs</li>
+                        <li>Routine vulnerability checks</li>
                     </ul>
                 </section>
 
                 {/* SECTION 4 */}
-                <section className="bg-black/40 p-8 rounded-2xl border border-white/10 backdrop-blur-xl hover:border-ptek-blue/30 transition-all duration-300">
-                    <div className="flex items-center gap-3 mb-4">
+                <section className="ptek-card">
+                    <div className="section-title">
                         <Eye className="text-ptek-blue" size={28} />
-                        <h2 className="text-2xl font-bold text-white">4. Cookies & Tracking</h2>
+                        <h2>4. Cookies & Tracking</h2>
                     </div>
 
-                    <p className="text-gray-400 leading-relaxed">
-                        We use minimal tracking technologies such as anonymous analytics cookies
-                        to identify platform performance, improve user experience, and detect anomalies.
+                    <p className="section-text">
+                        P-TEK uses only minimal, anonymous analytics cookies to measure system performance.
                     </p>
 
-                    <ul className="list-disc list-inside text-gray-400 mt-4 space-y-2">
-                        <li>No personal identities are stored in cookies</li>
-                        <li>We do not use any third-party advertising trackers</li>
-                        <li>Users can disable cookies anytime from their browser</li>
+                    <ul className="section-list">
+                        <li>No personal identity information is stored</li>
+                        <li>No third-party ad tracking is used</li>
+                        <li>You may disable cookies anytime from your browser settings</li>
                     </ul>
                 </section>
 
                 {/* SECTION 5 */}
-                <section className="bg-black/40 p-8 rounded-2xl border border-white/10 backdrop-blur-xl hover:border-ptek-blue/30 transition-all duration-300">
-                    <div className="flex items-center gap-3 mb-4">
+                <section className="ptek-card">
+                    <div className="section-title">
                         <Globe2 className="text-ptek-blue" size={28} />
-                        <h2 className="text-2xl font-bold text-white">5. Third-Party Services</h2>
+                        <h2>5. Third-Party Content</h2>
                     </div>
 
-                    <p className="text-gray-400 leading-relaxed">
-                        P-TEK Intelligence aggregates external news sources. These sources may 
-                        have their own privacy policies. We do not control third-party tracking, 
-                        but we never transmit your personal information to them.
+                    <p className="section-text">
+                        P-TEK Intelligence aggregates publicly available news from verified 
+                        publishers. These external sources may use independent privacy practices. 
+                        However, P-TEK never transmits your personal data to any external entity.
                     </p>
                 </section>
 
-                {/* SECTION 6 */}
-                <section className="bg-black/40 p-8 rounded-2xl border border-white/10 backdrop-blur-xl hover:border-ptek-blue/30 transition-all duration-300">
-                    <h2 className="text-2xl font-bold text-white mb-4">6. Contact</h2>
-                    <p className="text-gray-400 leading-relaxed">
-                        For privacy-related concerns, reach out at:
+                {/* SECTION 6 — CONTACT */}
+                <section className="ptek-card">
+                    <h2 className="text-2xl font-bold text-white mb-4">6. Contact Us</h2>
+                    
+                    <p className="section-text mb-4">
+                        For privacy-related concerns or questions, you can reach us at:
                         <br />
-                        <span className="text-ptek-blue font-semibold">
-                            support@ptek-intel.com
-                        </span>
+                        <span className="text-ptek-blue font-semibold">support@ptek-intel.com</span>
                     </p>
+
+                    <a
+                        href="https://www.linkedin.com/in/data-by-pratik/"
+                        target="_blank"
+                        className="inline-flex items-center gap-2 px-5 py-2 rounded-lg 
+                                   bg-ptek-blue/20 border border-ptek-blue/40 
+                                   text-ptek-blue font-semibold hover:bg-ptek-blue 
+                                   hover:text-black transition-all duration-300"
+                    >
+                        <Linkedin size={20} />
+                        Connect with Pratik Kumar
+                    </a>
                 </section>
             </div>
 
             {/* FOOTER NOTE */}
             <div className="text-center mt-20 text-gray-500 text-xs">
-                © {new Date().getFullYear()} P-TEK Intelligence Systems.  
-                Engineered with precision for next-generation autonomy.
+                © {new Date().getFullYear()} P-TEK Intelligence Systems. Engineered for high-precision autonomy.
             </div>
         </div>
     );
 }
+
+/* --- EXTRA CSS CLASSES (AUTO APPLIED VIA GLOBAL.CSS TAILWIND) --- */
