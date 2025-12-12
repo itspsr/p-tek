@@ -1,8 +1,8 @@
-import createMetadata from "next"; // Assuming default meta or manual
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import GoTop from "../components/GoTop";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -15,9 +15,17 @@ export default function RootLayout({ children }) {
     return (
         <html lang="en">
             <body className={inter.className}>
-                <div className="flex flex-col min-h-screen">
+                <div className="min-h-screen flex flex-col bg-black">
+                    
+                    {/* 🔵 FIXED HEADER ALWAYS AT TOP */}
                     <Header />
-                    <main className="flex-1 flex flex-col">{children}</main>
+
+                    {/* 🔵 MAIN CONTENT */}
+                    <main className="flex-1 w-full">
+                        {children}
+                    </main>
+
+                    {/* 🔵 FOOTER */}
                     <Footer />
                 </div>
             </body>
