@@ -1,11 +1,8 @@
 [build]
   command = "npm run build"
-  publish = ".next/standalone/.next/server/app" # Wait, for app router mostly .next but let's stick to standard publish = ".next" or let Netlify auto-detect Next.js plugin.
-  ## safer for simple next export or default build:
-  publish = ".next"
+  publish = "out"
 
-[context.production]
-  environment = { NODE_VERSION = "18" }
-
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
