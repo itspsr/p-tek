@@ -179,7 +179,7 @@ export async function getCategoryNews(category, limit = 20) {
         thumbnail,
         link: item.link || "#",
         source: item.source || "Unknown",
-        category: category.toUpperCase(),
+        category: category.toLowerCase(),
       };
     })
   );
