@@ -10,9 +10,8 @@ function cleanObject(obj) {
   if (obj.file) delete obj.file;
 
   for (const key of Object.keys(obj)) {
-    const val = obj[key];
     if (key.toLowerCase() === "file") delete obj[key];
-    else if (val && typeof val === "object") cleanObject(val);
+    else if (typeof obj[key] === "object") cleanObject(obj[key]);
   }
   return obj;
 }
@@ -23,19 +22,18 @@ export function sanitizeItem(item) {
 
 /* RSS PARSER */
 const parser = new Parser({
-  timeout: 8000,
+  timeout: 6000,
   customFields: {
     item: [
       ["media:content", "mediaContent"],
       ["media:thumbnail", "mediaThumbnail"],
       ["enclosure", "enclosure"],
       ["content:encoded", "contentEncoded"],
-      ["dc:creator", "creator"],
     ],
   },
 });
 
-/* RSS FEEDS */
+/* FEEDS */
 const FEEDS = {
   world: [
     "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
@@ -49,41 +47,42 @@ const FEEDS = {
   ],
   finance: [
     "https://feeds.bbci.co.uk/news/business/rss.xml",
-    "https://www.marketwatch.com/feeds/topstories",
-    "https://www.investing.com/rss/news_25.rss",
+    // REMOVE IMAGE PROBLEM SOURCES
+    // "https://www.marketwatch.com/feeds/topstories",
+    // "https://www.investing.com/rss/news_25.rss",
   ],
 };
 
-/* ADVANCED IMAGE EXTRACTOR */
+/* IMAGE EXTRACTOR */
 function extractImageFromHtml(html) {
   if (!html) return null;
 
   try {
     const $ = cheerio.load(html);
-    let img = null;
+    const img = $("img").first();
 
-    // 1 — <img src="">
-    img = $("img").first().attr("src");
-    if (img) return img.startsWith("//") ? "https:" + img : img;
+    // src
+    let src = img.attr("src");
+    if (src) return src.startsWith("//") ? "https:" + src : src;
 
-    // 2 — <img data-src="">
-    img = $("img").first().attr("data-src");
-    if (img) return img.startsWith("//") ? "https:" + img : img;
+    // data-src
+    src = img.attr("data-src");
+    if (src) return src.startsWith("//") ? "https:" + src : src;
 
-    // 3 — <img data-original="">
-    img = $("img").first().attr("data-original");
-    if (img) return img.startsWith("//") ? "https:" + img : img;
+    // data-original
+    src = img.attr("data-original");
+    if (src) return src.startsWith("//") ? "https:" + src : src;
 
-    // 4 — srcset
-    const srcset = $("img").first().attr("srcset");
+    // srcset
+    const srcset = img.attr("srcset");
     if (srcset) {
       const first = srcset.split(",")[0].trim().split(" ")[0];
       return first.startsWith("//") ? "https:" + first : first;
     }
 
-    // 5 — <figure> images (Guardian)
-    img = $("figure img").first().attr("src");
-    if (img) return img.startsWith("//") ? "https:" + img : img;
+    // Guardian <figure>
+    const fig = $("figure img").first().attr("src");
+    if (fig) return fig.startsWith("//") ? "https:" + fig : fig;
 
     return null;
   } catch {
@@ -91,40 +90,14 @@ function extractImageFromHtml(html) {
   }
 }
 
-/* OG IMAGE FALLBACK */
-async function tryFetchOgImage(url) {
-  if (!url) return null;
-
-  try {
-    const controller = new AbortController();
-    setTimeout(() => controller.abort(), 1500);
-
-    const res = await fetch(url, { signal: controller.signal });
-    if (!res.ok) return null;
-
-    const html = await res.text();
-    const $ = cheerio.load(html);
-
-    let og =
-      $('meta[property="og:image"]').attr("content") ||
-      $('meta[name="og:image"]').attr("content");
-
-    if (og && og.startsWith("//")) og = "https:" + og;
-
-    return og || null;
-  } catch {
-    return null;
-  }
-}
-
-/* FETCH CATEGORY NEWS */
+/* FETCH CATEGORY */
 export async function getCategoryNews(category, limit = 20) {
   const urls = FEEDS[category];
   if (!urls) return MOCK_NEWS[category] || [];
 
-  const allItems = [];
+  const all = [];
 
-  const resultGroups = await Promise.all(
+  const groups = await Promise.all(
     urls.map(async (url) => {
       try {
         const feed = await parser.parseURL(url);
@@ -132,47 +105,37 @@ export async function getCategoryNews(category, limit = 20) {
           ...sanitizeItem(i),
           source: feed.title || "News",
         }));
-      } catch (e) {
-        console.error("Feed error:", url, e?.message);
+      } catch (err) {
+        console.error("Feed Error:", url, err?.message);
         return [];
       }
     })
   );
 
-  resultGroups.flat().forEach((i) => allItems.push(i));
+  groups.flat().forEach((i) => all.push(i));
 
-  // Sort by newest
-  allItems.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+  // sort newest first
+  all.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
-  // Normalize items
+  // normalize
   const normalized = await Promise.all(
-    allItems.slice(0, limit).map(async (item) => {
-      // Extract from HTML
-      const htmlImg =
-        extractImageFromHtml(item.content) ||
-        extractImageFromHtml(item.contentEncoded);
-
-      // RSS image fields
+    all.slice(0, limit).map(async (item) => {
       let thumbnail =
         item.mediaContent?.$?.url ||
-        item.mediaContent?.url ||
         item.mediaThumbnail?.$?.url ||
+        item.mediaContent?.url ||
         item.mediaThumbnail?.url ||
         item.enclosure?.url ||
-        htmlImg ||
+        extractImageFromHtml(item.content) ||
+        extractImageFromHtml(item.contentEncoded) ||
         null;
 
-      // OG fallback
-      if (!thumbnail && item.link) {
-        thumbnail = await tryFetchOgImage(item.link);
-      }
-
-      // Final fallback
-      if (!thumbnail)
+      // fallback
+      if (!thumbnail) {
         thumbnail =
           "https://images.unsplash.com/photo-1522199710521-72d69614c702?auto=format&fit=crop&w=1200&q=60";
+      }
 
-      // Fix auto protocol
       if (thumbnail?.startsWith("//")) thumbnail = "https:" + thumbnail;
 
       return {
@@ -180,9 +143,10 @@ export async function getCategoryNews(category, limit = 20) {
         title: item.title || "Untitled",
         summary:
           (item.contentSnippet || item.summary || "")
-            .toString()
+            ?.toString()
+            .replace(/<[^>]+>/g, "")
             .slice(0, 250) + "...",
-        date: item.pubDate || new Date().toISOString(),
+        date: isNaN(new Date(item.pubDate)) ? new Date().toISOString() : item.pubDate,
         thumbnail,
         link: item.link,
         source: item.source,
@@ -202,14 +166,11 @@ export async function getAllNews() {
     getCategoryNews("finance", 6),
   ]);
 
-  return {
-    world,
-    tech,
-    finance,
-    breaking: [...world, ...tech, ...finance]
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
-      .slice(0, 10),
-  };
+  const breaking = [...world, ...tech, ...finance]
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 12);
+
+  return { world, tech, finance, breaking };
 }
 
 export function formatDate(dateString) {
