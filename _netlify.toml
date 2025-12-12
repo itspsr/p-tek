@@ -1,6 +1,6 @@
 [build]
   command = "npm run build"
-  publish = "out"
+  publish = ".next"
 
-[scheduled]
-  cron = "0 * * * *"
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
