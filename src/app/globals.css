@@ -107,22 +107,28 @@ body {
 /* ---------------------------------- */
 /* TICKER (Smooth + Fixed Speed)      */
 /* ---------------------------------- */
+/* ---------------------------------- */
+/* FINAL FIXED TICKER SPEED           */
+/* ---------------------------------- */
+
 @keyframes ticker {
   0%   { transform: translateX(100%); }
   100% { transform: translateX(-100%); }
 }
 
+/* Desktop → Slow scrolling (65 seconds) */
 .animate-ticker {
-  animation: ticker 45s linear infinite;
-  will-change: transform;
-  display: inline-flex;
+  animation: ticker 65s linear infinite;
   white-space: nowrap;
+  display: inline-flex;
+  gap: 3rem;
+  will-change: transform;
 }
 
-/* Mobile: slower for readability */
+/* Mobile → Even slower (90s) */
 @media (max-width: 768px) {
   .animate-ticker {
-    animation-duration: 60s;
+    animation-duration: 90s;
   }
 }
 
