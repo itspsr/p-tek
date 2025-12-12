@@ -3,7 +3,14 @@ import { getCategoryNews } from '../../lib/rss';
 import NewsCard from '../../components/NewsCard';
 import { ArrowLeft } from 'lucide-react';
 
+export const dynamic = "force-dynamic";        // ⬅ FIX 1
+export const dynamicParams = true;             // ⬅ FIX 2
 export const revalidate = 3600;
+
+// REMOVE STATIC PARAMS (EXPORT MODE DOES NOT ALLOW)
+export function generateStaticParams() {
+    return [];                                  // ⬅ FIX 3
+}
 
 export async function generateMetadata({ params }) {
     const category = params.category.charAt(0).toUpperCase() + params.category.slice(1);
@@ -11,14 +18,6 @@ export async function generateMetadata({ params }) {
         title: `${category} News | P-TEK Intelligence`,
         description: `Latest ${category} news updates from P-TEK Intelligence.`
     };
-}
-
-export async function generateStaticParams() {
-    return [
-        { category: 'world' },
-        { category: 'tech' },
-        { category: 'finance' },
-    ];
 }
 
 export default async function CategoryPage({ params }) {
