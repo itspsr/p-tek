@@ -114,10 +114,9 @@ body {
 
 .animate-ticker {
   animation: ticker 45s linear infinite;
-  white-space: nowrap;
-  display: inline-flex;
-  gap: 3rem;
   will-change: transform;
+  display: inline-flex;
+  white-space: nowrap;
 }
 
 /* Mobile: slower for readability */
