@@ -3,29 +3,37 @@ import * as cheerio from "cheerio";
 import { MOCK_NEWS } from "./mockData";
 
 // ===============================
-// REMOVE ALL "File" FIELDS (SSR FIX)
+// REMOVE ANY "File" FIELDS (SSR FIX)
 // ===============================
 function cleanObject(obj) {
     if (!obj || typeof obj !== "object") return obj;
 
+    // Remove direct File fields
+    if (obj.File) delete obj.File;
+    if (obj.file) delete obj.file;
+
     for (const key of Object.keys(obj)) {
         const val = obj[key];
 
-        // Remove any `File` field (capital F or small f)
-        if (key.toLowerCase() === "file") {
-            delete obj[key];
-            continue;
-        }
+        // Recursively clean nested objects
+        if (val && typeof val === "object") cleanObject(val);
 
-        if (val && typeof val === "object") {
-            cleanObject(val);
+        // Some RSS feeds put File inside "$" object
+        if (key === "$" && val) {
+            if (val.File) delete val.File;
+            if (val.file) delete val.file;
         }
     }
+
     return obj;
 }
 
+export function sanitizeItem(item) {
+    return cleanObject(item);
+}
+
 // ===============================
-// RSS PARSER
+// RSS PARSER CONFIG
 // ===============================
 const parser = new Parser({
     customFields: {
@@ -33,13 +41,14 @@ const parser = new Parser({
             ["media:content", "mediaContent"],
             ["media:thumbnail", "mediaThumbnail"],
             ["enclosure", "enclosure"],
-            ["content:encoded", "contentEncoded"]
-        ]
-    }
+            ["content:encoded", "contentEncoded"],
+            ["dc:creator", "creator"],
+        ],
+    },
 });
 
 // ===============================
-// RSS FEED URLs
+// RSS FEED URLS
 // ===============================
 const FEEDS = {
     world: [
@@ -60,11 +69,12 @@ const FEEDS = {
 };
 
 // ===============================
-// EXTRACT IMAGE FROM HTML
+// IMAGE EXTRACTION
 // ===============================
-function extractImage(html) {
+function extractImageFromHtml(html) {
+    if (!html) return null;
     try {
-        const $ = cheerio.load(html || "");
+        const $ = cheerio.load(html);
         return $("img").first().attr("src") || null;
     } catch {
         return null;
@@ -78,51 +88,64 @@ export async function getCategoryNews(category, limit = 20) {
     const urls = FEEDS[category];
     if (!urls) return MOCK_NEWS[category] || [];
 
-    const all = [];
+    const allItems = [];
 
     const feedPromises = urls.map(async (url) => {
         try {
             const feed = await parser.parseURL(url);
-            return feed.items.map(item => {
-                item = cleanObject(item); // ⭐ FIX
-                return { ...item, source: feed.title || "News" };
-            });
+
+            return feed.items.map((item) =>
+                sanitizeItem({
+                    ...item,
+                    source: feed.title || "News"
+                })
+            );
         } catch (e) {
+            console.error("Feed error:", e.message);
             return [];
         }
     });
 
     const results = await Promise.all(feedPromises);
-    results.flat().forEach(x => all.push(x));
+    results.flat().forEach((i) => allItems.push(i));
 
-    // Sort by date
-    all.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+    allItems.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
-    const normalized = all.slice(0, limit).map(item => {
-        const htmlImg =
-            extractImage(item.content) ||
-            extractImage(item.contentEncoded);
+    const normalized = await Promise.all(
+        allItems.slice(0, limit).map(async (item) => {
+            const htmlImg =
+                extractImageFromHtml(item.content) ||
+                extractImageFromHtml(item.contentEncoded);
 
-        const thumbnail =
-            item.mediaContent?.$?.url ||
-            item.mediaThumbnail?.$?.url ||
-            item.enclosure?.url ||
-            htmlImg ||
-            "/fallback.jpg";
+            const thumbnail =
+                item.mediaContent?.$?.url ||
+                item.mediaThumbnail?.$?.url ||
+                item.enclosure?.url ||
+                htmlImg ||
+                "/fallback.jpg";
 
-        return {
-            id: Buffer.from(item.link || item.title).toString("base64").substring(0, 16),
-            title: item.title,
-            summary: (item.contentSnippet || item.content || "").substring(0, 200) + "...",
-            date: item.pubDate,
-            thumbnail,
-            source: item.source,
-            link: item.link,
-            category
-        };
-    });
+            return sanitizeItem({
+                id: Buffer.from(item.link || item.title)
+                    .toString("base64")
+                    .substring(0, 16),
 
-    if (!normalized.length) return MOCK_NEWS[category] || [];
+                title: item.title,
+                summary:
+                    (item.contentSnippet ||
+                        item.content ||
+                        "").substring(0, 200) + "...",
+
+                date: item.pubDate,
+                thumbnail,
+                source: item.source || "Unknown",
+                link: item.link,
+                category: category.charAt(0).toUpperCase() + category.slice(1)
+            });
+        })
+    );
+
+    if (normalized.length === 0) return MOCK_NEWS[category] || [];
+
     return normalized;
 }
 
@@ -147,7 +170,7 @@ export async function getAllNews() {
 }
 
 // ===============================
-// FIXED DATE FORMATTER
+// FIXED formatDate EXPORT
 // ===============================
 export function formatDate(dateString) {
     try {
@@ -158,20 +181,5 @@ export function formatDate(dateString) {
         });
     } catch {
         return "Unknown date";
-    }
-}
-
-// ===============================
-// TIME AGO FORMATTER
-// ===============================
-export function timeAgo(date) {
-    try {
-        const diff = (Date.now() - new Date(date)) / 1000;
-        if (diff < 60) return `${Math.floor(diff)}s ago`;
-        if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-        if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-        return `${Math.floor(diff / 86400)}d ago`;
-    } catch {
-        return "Unknown";
     }
 }
