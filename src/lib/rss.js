@@ -1,128 +1,139 @@
-import Parser from 'rss-parser';
-import * as cheerio from 'cheerio';
-import { MOCK_NEWS } from './mockData';
+import Parser from "rss-parser";
+import * as cheerio from "cheerio";
+import { MOCK_NEWS } from "./mockData";
 
-const parser = new Parser({
-    customFields: {
-        item: [
-            ['media:content', 'mediaContent'],
-            ['media:thumbnail', 'mediaThumbnail'],
-            ['enclosure', 'enclosure'],
-            ['content:encoded', 'contentEncoded'],
-            ['dc:creator', 'creator'],
-        ],
-    },
-});
-
-const FEEDS = {
-    world: [
-        'https://feeds.bbci.co.uk/news/world/rss.xml',
-        'https://www.theguardian.com/world/rss',
-        'https://www.reutersagency.com/feed/?best-sectors=top-news&post_type=best'
-    ],
-    tech: [
-        'http://feeds.feedburner.com/TechCrunch/',
-        'http://feeds.arstechnica.com/arstechnica/index',
-        'https://www.theverge.com/rss/index.xml'
-    ],
-    finance: [
-        'https://www.cnbc.com/id/100003114/device/rss/rss.html',
-        'https://www.coindesk.com/arc/outboundfeeds/rss/',
-        'https://feeds.bloomberg.com/markets/news.rss'
-    ]
-};
-
-// REMOVE ALL File objects recursively
+// ===============================
+// REMOVE ALL "File" FIELDS (SSR FIX)
+// ===============================
 function cleanObject(obj) {
     if (!obj || typeof obj !== "object") return obj;
-
-    if (obj.File) delete obj.File;
-    if (obj.file) delete obj.file;
 
     for (const key of Object.keys(obj)) {
         const val = obj[key];
 
-        if (typeof val === "object") cleanObject(val);
+        // Remove any `File` field (capital F or small f)
+        if (key.toLowerCase() === "file") {
+            delete obj[key];
+            continue;
+        }
 
-        if (key === "$" && val) {
-            if (val.File) delete val.File;
-            if (val.file) delete val.file;
+        if (val && typeof val === "object") {
+            cleanObject(val);
         }
     }
-
     return obj;
 }
 
-function sanitizeItem(item) {
-    return cleanObject(item);
-}
+// ===============================
+// RSS PARSER
+// ===============================
+const parser = new Parser({
+    customFields: {
+        item: [
+            ["media:content", "mediaContent"],
+            ["media:thumbnail", "mediaThumbnail"],
+            ["enclosure", "enclosure"],
+            ["content:encoded", "contentEncoded"]
+        ]
+    }
+});
 
-// Extract image from HTML content
-function extractImageFromHtml(html) {
-    if (!html) return null;
+// ===============================
+// RSS FEED URLs
+// ===============================
+const FEEDS = {
+    world: [
+        "https://feeds.bbci.co.uk/news/world/rss.xml",
+        "https://www.theguardian.com/world/rss",
+        "https://www.reutersagency.com/feed/?best-sectors=top-news&post_type=best"
+    ],
+    tech: [
+        "http://feeds.feedburner.com/TechCrunch/",
+        "http://feeds.arstechnica.com/arstechnica/index",
+        "https://www.theverge.com/rss/index.xml"
+    ],
+    finance: [
+        "https://www.cnbc.com/id/100003114/device/rss/rss.html",
+        "https://www.coindesk.com/arc/outboundfeeds/rss/",
+        "https://feeds.bloomberg.com/markets/news.rss"
+    ]
+};
+
+// ===============================
+// EXTRACT IMAGE FROM HTML
+// ===============================
+function extractImage(html) {
     try {
-        const $ = cheerio.load(html);
-        return $('img').first().attr('src') || null;
+        const $ = cheerio.load(html || "");
+        return $("img").first().attr("src") || null;
     } catch {
         return null;
     }
 }
 
+// ===============================
+// FETCH CATEGORY NEWS
+// ===============================
 export async function getCategoryNews(category, limit = 20) {
     const urls = FEEDS[category];
     if (!urls) return MOCK_NEWS[category] || [];
 
-    const allItems = [];
+    const all = [];
 
     const feedPromises = urls.map(async (url) => {
         try {
             const feed = await parser.parseURL(url);
-            return feed.items.map(item => sanitizeItem({ ...item, source: feed.title || 'News' }));
-        } catch {
+            return feed.items.map(item => {
+                item = cleanObject(item); // ⭐ FIX
+                return { ...item, source: feed.title || "News" };
+            });
+        } catch (e) {
             return [];
         }
     });
 
     const results = await Promise.all(feedPromises);
-    results.flat().forEach(item => allItems.push(item));
+    results.flat().forEach(x => all.push(x));
 
-    allItems.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+    // Sort by date
+    all.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
-    const normalized = await Promise.all(
-        allItems.slice(0, limit).map(async (item) => {
-            const htmlImg =
-                extractImageFromHtml(item.content) ||
-                extractImageFromHtml(item.contentEncoded);
+    const normalized = all.slice(0, limit).map(item => {
+        const htmlImg =
+            extractImage(item.content) ||
+            extractImage(item.contentEncoded);
 
-            const thumbnail =
-                item.mediaContent?.$?.url ||
-                item.mediaThumbnail?.$?.url ||
-                item.enclosure?.url ||
-                htmlImg ||
-                '/fallback.jpg';
+        const thumbnail =
+            item.mediaContent?.$?.url ||
+            item.mediaThumbnail?.$?.url ||
+            item.enclosure?.url ||
+            htmlImg ||
+            "/fallback.jpg";
 
-            return {
-                id: Buffer.from(item.link || item.title).toString('base64').substring(0, 16),
-                title: item.title,
-                summary: (item.contentSnippet || item.content || '').substring(0, 200) + '...',
-                date: item.pubDate,
-                thumbnail,
-                source: item.source || 'Unknown',
-                link: item.link,
-                category: category.charAt(0).toUpperCase() + category.slice(1)
-            };
-        })
-    );
+        return {
+            id: Buffer.from(item.link || item.title).toString("base64").substring(0, 16),
+            title: item.title,
+            summary: (item.contentSnippet || item.content || "").substring(0, 200) + "...",
+            date: item.pubDate,
+            thumbnail,
+            source: item.source,
+            link: item.link,
+            category
+        };
+    });
 
-    if (normalized.length === 0) return MOCK_NEWS[category] || [];
+    if (!normalized.length) return MOCK_NEWS[category] || [];
     return normalized;
 }
 
+// ===============================
+// FETCH ALL NEWS
+// ===============================
 export async function getAllNews() {
     const [world, tech, finance] = await Promise.all([
-        getCategoryNews('world', 6),
-        getCategoryNews('tech', 6),
-        getCategoryNews('finance', 6)
+        getCategoryNews("world", 6),
+        getCategoryNews("tech", 6),
+        getCategoryNews("finance", 6)
     ]);
 
     return {
@@ -135,7 +146,9 @@ export async function getAllNews() {
     };
 }
 
-// FIXED formatDate EXPORT
+// ===============================
+// FIXED DATE FORMATTER
+// ===============================
 export function formatDate(dateString) {
     try {
         return new Date(dateString).toLocaleDateString("en-US", {
@@ -145,5 +158,20 @@ export function formatDate(dateString) {
         });
     } catch {
         return "Unknown date";
+    }
+}
+
+// ===============================
+// TIME AGO FORMATTER
+// ===============================
+export function timeAgo(date) {
+    try {
+        const diff = (Date.now() - new Date(date)) / 1000;
+        if (diff < 60) return `${Math.floor(diff)}s ago`;
+        if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+        return `${Math.floor(diff / 86400)}d ago`;
+    } catch {
+        return "Unknown";
     }
 }
