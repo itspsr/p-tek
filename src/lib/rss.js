@@ -1,21 +1,21 @@
-import Parser from 'rss-parser';
-import * as cheerio from 'cheerio';
-import { MOCK_NEWS } from './mockData';
+import Parser from "rss-parser";
+import * as cheerio from "cheerio";
+import { MOCK_NEWS } from "./mockData";
 
-// =============================================
+//
 // REMOVE ANY "File" FIELDS (SSR FIX)
-// =============================================
+//
 function cleanObject(obj) {
   if (!obj || typeof obj !== "object") return obj;
 
-  // Remove direct File or file fields
+  // Remove direct fields
   if (obj.File) delete obj.File;
   if (obj.file) delete obj.file;
 
   for (const key of Object.keys(obj)) {
     const val = obj[key];
 
-    // Some RSS feeds send { "$": { File: ... } }
+    // For the "$" special key
     if (key === "$" && val) {
       if (val.File) delete val.File;
       if (val.file) delete val.file;
@@ -31,9 +31,9 @@ export function sanitizeItem(item) {
   return cleanObject(item);
 }
 
-// =============================================
-// RSS PARSER
-// =============================================
+//
+// PARSER CONFIG
+//
 const parser = new Parser({
   customFields: {
     items: [
@@ -41,32 +41,25 @@ const parser = new Parser({
       ["media:thumbnail", "mediaThumbnail"],
       ["enclosure", "enclosure"],
       ["content:encoded", "contentEncoded"],
-      ["dc:creator", "creator"]
+      ["dc:creator", "creator"],
     ],
   },
 });
 
-// =============================================
-// RSS FEED URLS
-// =============================================
+//
+// FEEDS
+//
 const FEEDS = {
-  world: [
-    "https://feeds.bbci.co.uk/news/world/rss.xml"
-  ],
-  tech: [
-    "http://feeds.feedburner.com/TechCrunch/"
-  ],
-  finance: [
-    "https://www.cnbc.com/id/100003114/device/rss/rss.html"
-  ]
+  world: ["https://feeds.bbci.co.uk/news/world/rss.xml"],
+  tech: ["http://feeds.feedburner.com/TechCrunch/"],
+  finance: ["https://www.cnbc.com/id/100003114/device/rss/rss.html"],
 };
 
-// =============================================
-// IMAGE EXTRACTION (SAFE FOR NEXT.JS SSR)
-// =============================================
+//
+// IMAGE EXTRACTION
+//
 function extractImage(html) {
   if (!html) return null;
-
   try {
     const $ = cheerio.load(html);
     return $("img").first().attr("src") || null;
@@ -75,9 +68,9 @@ function extractImage(html) {
   }
 }
 
-// =============================================
-// FETCH CATEGORY NEWS
-// =============================================
+//
+// CATEGORY NEWS
+//
 export async function getCategoryNews(category, limit = 20) {
   const urls = FEEDS[category];
   if (!urls) return MOCK_NEWS[category] || [];
@@ -103,7 +96,7 @@ export async function getCategoryNews(category, limit = 20) {
   const all = [];
   results.flat().forEach((x) => all.push(x));
 
-  // Sort by newest
+  // Sort newest
   all.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
   const normalized = await Promise.all(
@@ -120,7 +113,9 @@ export async function getCategoryNews(category, limit = 20) {
         "/fallback.jpg";
 
       return {
-        id: Buffer.from(item.link || item.title).toString("base64").substring(0, 16),
+        id: Buffer.from(item.link || item.title)
+          .toString("base64")
+          .substring(0, 16),
         title: item.title,
         summary:
           (item.contentSnippet || item.content || "").substring(0, 200) + "...",
@@ -138,9 +133,9 @@ export async function getCategoryNews(category, limit = 20) {
   return normalized;
 }
 
-// =============================================
-// FETCH ALL NEWS
-// =============================================
+//
+// ALL NEWS
+//
 export async function getAllNews() {
   const { world, tech, finance } = await Promise.all({
     world: getCategoryNews("world", 6),
@@ -151,9 +146,9 @@ export async function getAllNews() {
   return [...world, ...tech, ...finance];
 }
 
-// =============================================
-// FIXED DATE FORMATTER
-// =============================================
+//
+// DATE FORMATTER
+//
 export function formatDate(dateString) {
   try {
     return new Date(dateString).toLocaleDateString("en-US", {
