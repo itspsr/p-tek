@@ -3,6 +3,8 @@ const nextConfig = {
   output: "standalone",
 
   images: {
+    unoptimized: false, // sharp optimization ON
+
     remotePatterns: [
       // NYTimes
       { protocol: "https", hostname: "static01.nyt.com" },
@@ -46,4 +48,5 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+// ⚠️ Next.js on Render needs CommonJS export!
+module.exports = nextConfig;
