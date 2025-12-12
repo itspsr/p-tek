@@ -4,9 +4,7 @@ import Ticker from '../components/Ticker';
 import NewsCard from '../components/NewsCard';
 import { ArrowRight } from 'lucide-react';
 
-// ❌ REMOVE dynamic="force-dynamic"
-// ✔ Keep revalidate (optional)
-export const revalidate = 3600;
+export const revalidate = 3600; // static regeneration
 
 export default async function Home() {
     const data = await getAllNews();
@@ -14,31 +12,51 @@ export default async function Home() {
 
     return (
         <div className="flex flex-col min-h-screen">
+
             {/* HERO SECTION */}
-            <section className="relative h-[70vh] flex flex-col items-center justify-center text-center px-4 overflow-hidden">
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))]
-                    from-blue-900/20 via-black to-black opacity-60 z-0"></div>
+            <section className="relative flex flex-col items-center justify-center text-center px-4 py-32 overflow-hidden">
 
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-                    w-[600px] h-[600px] bg-ptek-blue/10 rounded-full blur-[120px] pointer-events-none"></div>
+                {/* Galaxy Glow Background */}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,140,255,0.15),rgba(0,0,0,0.9))]"></div>
 
-                <div className="relative z-10 max-w-4xl mx-auto space-y-6 animate-fade-in">
-                    <span className="inline-block px-4 py-1.5 rounded-full border border-ptek-blue/30
-                        bg-ptek-blue/10 backdrop-blur text-xs font-mono text-ptek-blue mb-4">
-                        :: SYSTEM ONLINE :: LIVE FEED ACTIVE
+                {/* Neon Aura Light */}
+                <div className="absolute w-[650px] h-[650px] bg-ptek-blue/20 rounded-full blur-[160px] opacity-40"></div>
+
+                {/* BRAND TITLE */}
+                <h1 className="absolute top-8 left-8 text-2xl font-extrabold tracking-tighter">
+                    <span className="bg-gradient-to-r from-blue-400 to-purple-400 text-transparent bg-clip-text drop-shadow-lg">
+                        P-TEK Intelligence
                     </span>
+                </h1>
 
-                    <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-4 text-white">
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">
-                            Real-Time AI Powered
+                {/* MAIN HERO TEXT */}
+                <div className="relative z-10 max-w-4xl mx-auto space-y-8 animate-fade-in">
+
+                    {/* TITLE BLOCK */}
+                    <h1 className="text-5xl md:text-7xl font-black leading-tight tracking-tight">
+                        <span className="block bg-gradient-to-r from-blue-400 to-purple-400 text-transparent bg-clip-text">
+                            Real-Time AI
                         </span>
-                        <br />
-                        <span className="text-ptek-blue text-glow">Breaking News</span>
+                        <span className="block bg-gradient-to-r from-purple-400 to-pink-500 text-transparent bg-clip-text">
+                            Powered
+                        </span>
+                        <span className="block text-6xl md:text-8xl text-glow font-extrabold text-white">
+                            Breaking News
+                        </span>
                     </h1>
 
-                    <p className="text-lg md:text-xl text-gray-400 font-light max-w-2xl mx-auto">
-                        Global intelligence network aggregating World, Tech, and Finance updates.
+                    {/* SUBTEXT */}
+                    <p className="text-lg md:text-xl text-gray-300 font-light max-w-2xl mx-auto">
+                        Fastest, most accurate intelligence feed for the modern world.
                     </p>
+
+                    {/* STATUS CHIP */}
+                    <div className="inline-flex items-center px-6 py-2 border border-ptek-blue/40 
+                        bg-black/40 backdrop-blur-md rounded-full text-xs font-mono 
+                        text-ptek-blue tracking-wider shadow-[0_0_15px_rgba(0,140,255,0.4)]">
+                        :: SYSTEM ONLINE :: INTELLIGENCE ACTIVE
+                    </div>
+
                 </div>
             </section>
 
@@ -63,7 +81,7 @@ export default async function Home() {
                         </div>
                         <div className="space-y-6">
                             {world.slice(0, 3).map(item => (
-                                <NewsCard key={item.id} article={item} minimal={true} />
+                                <NewsCard key={item.id} article={item} minimal />
                             ))}
                         </div>
                     </div>
@@ -80,7 +98,7 @@ export default async function Home() {
                         </div>
                         <div className="space-y-6">
                             {tech.slice(0, 3).map(item => (
-                                <NewsCard key={item.id} article={item} minimal={true} />
+                                <NewsCard key={item.id} article={item} minimal />
                             ))}
                         </div>
                     </div>
@@ -97,7 +115,7 @@ export default async function Home() {
                         </div>
                         <div className="space-y-6">
                             {finance.slice(0, 3).map(item => (
-                                <NewsCard key={item.id} article={item} minimal={true} />
+                                <NewsCard key={item.id} article={item} minimal />
                             ))}
                         </div>
                     </div>
