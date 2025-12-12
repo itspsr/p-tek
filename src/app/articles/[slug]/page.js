@@ -2,46 +2,32 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, ExternalLink, Clock } from "lucide-react";
 import { getAllNews, formatDate } from "../../../lib/rss";
-import ShareButton from "../../components/ShareButton";
+import ShareButton from "@/app/components/ShareButton";
 
 export const revalidate = 3600;
 
-/* ---------------------------------------------------
-   1) STATIC PARAMS
---------------------------------------------------- */
+/* STATIC PATHS */
 export async function generateStaticParams() {
   const { world, tech, finance } = await getAllNews();
   const all = [...world, ...tech, ...finance];
 
   return all.map((item) => ({
-    slug: encodeURIComponent(item.link),   // FIXED
+    slug: encodeURIComponent(item.link),
   }));
 }
 
-/* ---------------------------------------------------
-   2) GET SINGLE ARTICLE
---------------------------------------------------- */
+/* GET SINGLE ARTICLE */
 async function getArticle(slug) {
   const { world, tech, finance } = await getAllNews();
   const all = [...world, ...tech, ...finance];
 
-  // Decode stored slug
-  const realSlug = decodeURIComponent(slug);
-
-  return all.find((a) => a.link === realSlug) || null; // FIXED MATCH
+  return all.find((a) => encodeURIComponent(a.link) === slug) || null;
 }
 
-/* ---------------------------------------------------
-   3) METADATA
---------------------------------------------------- */
+/* META */
 export async function generateMetadata({ params }) {
   const article = await getArticle(params.slug);
-
-  if (!article) {
-    return {
-      title: "Article Not Found | P-TEK Intelligence",
-    };
-  }
+  if (!article) return { title: "Not Found | P-TEK Intelligence" };
 
   return {
     title: `${article.title} | P-TEK Intelligence`,
@@ -49,86 +35,60 @@ export async function generateMetadata({ params }) {
   };
 }
 
-/* ---------------------------------------------------
-   4) PAGE
---------------------------------------------------- */
+/* PAGE */
 export default async function ArticlePage({ params }) {
   const article = await getArticle(params.slug);
 
   if (!article) {
     return (
-      <div className="min-h-[50vh] flex flex-col items-center justify-center p-4 text-center">
-        <h1 className="text-2xl font-bold text-white mb-4">
-          Article Not Found
-        </h1>
-        <Link
-          href="/"
-          className="px-6 py-2 bg-ptek-blue text-black font-bold rounded-full hover:bg-white transition-colors"
-        >
+      <div className="min-h-[50vh] flex items-center justify-center flex-col text-center">
+        <h1 className="text-white text-2xl mb-4">Article Not Found</h1>
+        <Link href="/" className="bg-ptek-blue px-6 py-2 rounded-full text-black font-bold">
           Return to HQ
         </Link>
       </div>
     );
   }
 
+  const img = article.thumbnail || "/fallback.jpg";
+
   return (
-    <article className="container mx-auto px-4 py-12 max-w-4xl animate-fade-in">
-      {/* BACK */}
-      <Link
-        href="/"
-        className="inline-flex items-center text-gray-400 hover:text-white transition-colors text-sm"
-      >
-        <ArrowLeft size={16} className="mr-2" />
-        Back to Feed
+    <article className="container mx-auto max-w-4xl px-4 py-12">
+      <Link href="/" className="text-gray-400 text-sm flex items-center mb-4 hover:text-white">
+        <ArrowLeft className="mr-2" size={16} /> Back to Feed
       </Link>
 
-      {/* TITLE */}
-      <h1 className="text-3xl md:text-4xl font-bold text-white mt-6 mb-4">
+      <h1 className="text-white text-3xl md:text-4xl font-bold mb-4">
         {article.title}
       </h1>
 
-      {/* META */}
       <div className="flex items-center gap-4 text-gray-400 mb-6">
         <span className="px-3 py-1 bg-ptek-blue/10 border border-ptek-blue/20 rounded text-sm">
           {article.category}
         </span>
-        <span className="flex items-center gap-2 text-gray-400">
-          <Clock size={14} />
-          {formatDate(article.date)}
+
+        <span className="flex items-center gap-2">
+          <Clock size={14} /> {formatDate(article.date)}
         </span>
       </div>
 
-      {/* IMAGE */}
-      <div className="relative w-full aspect-video rounded-2xl overflow-hidden mb-8 border border-white/10 shadow-2xl">
-        <Image
-          src={article.thumbnail || "/fallback.jpg"}
-          alt={article.title}
-          fill
-          className="object-cover"
-          priority
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+      <div className="relative w-full aspect-video rounded-xl overflow-hidden mb-8 border border-white/10">
+        <Image src={img} alt={article.title} fill className="object-cover" />
       </div>
 
-      {/* SUMMARY */}
-      <p className="text-gray-300 leading-relaxed whitespace-pre-line text-lg">
+      <p className="text-gray-300 leading-relaxed text-lg whitespace-pre-line">
         {article.summary}
       </p>
 
-      {/* ACTIONS */}
-      <div className="mt-10 flex items-center justify-between">
-        {/* OPEN ORIGINAL */}
+      <div className="mt-10 flex justify-between items-center">
         <a
           href={article.link}
           target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center px-8 py-3 bg-ptek-blue text-black font-bold rounded-full hover:bg-white transition-colors"
+          className="bg-ptek-blue px-8 py-3 rounded-full text-black font-bold hover:bg-white transition"
         >
-          Open Original
-          <ExternalLink size={18} className="ml-2" />
+          Open Original <ExternalLink className="inline ml-2" size={18} />
         </a>
 
-        {/* SHARE BUTTON */}
         <ShareButton url={article.link} title={article.title} />
       </div>
     </article>

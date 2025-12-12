@@ -10,8 +10,9 @@ function cleanObject(obj) {
   if (obj.file) delete obj.file;
 
   for (const key of Object.keys(obj)) {
+    const val = obj[key];
     if (key.toLowerCase() === "file") delete obj[key];
-    else if (typeof obj[key] === "object") cleanObject(obj[key]);
+    else if (val && typeof val === "object") cleanObject(val);
   }
   return obj;
 }
@@ -20,20 +21,21 @@ export function sanitizeItem(item) {
   return cleanObject(item);
 }
 
-/* RSS PARSER */
+/* RSS PARSER CONFIG */
 const parser = new Parser({
-  timeout: 6000,
+  timeout: 8000,
   customFields: {
     item: [
       ["media:content", "mediaContent"],
       ["media:thumbnail", "mediaThumbnail"],
       ["enclosure", "enclosure"],
       ["content:encoded", "contentEncoded"],
+      ["dc:creator", "creator"],
     ],
   },
 });
 
-/* FEEDS */
+/* NEWS SOURCES */
 const FEEDS = {
   world: [
     "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
@@ -47,9 +49,8 @@ const FEEDS = {
   ],
   finance: [
     "https://feeds.bbci.co.uk/news/business/rss.xml",
-    // REMOVE IMAGE PROBLEM SOURCES
-    // "https://www.marketwatch.com/feeds/topstories",
-    // "https://www.investing.com/rss/news_25.rss",
+    "https://www.marketwatch.com/feeds/topstories",
+    "https://www.investing.com/rss/news_25.rss",
   ],
 };
 
@@ -59,45 +60,59 @@ function extractImageFromHtml(html) {
 
   try {
     const $ = cheerio.load(html);
-    const img = $("img").first();
 
-    // src
-    let src = img.attr("src");
-    if (src) return src.startsWith("//") ? "https:" + src : src;
+    let img =
+      $("img").attr("src") ||
+      $("img").attr("data-src") ||
+      $("img").attr("data-original");
 
-    // data-src
-    src = img.attr("data-src");
-    if (src) return src.startsWith("//") ? "https:" + src : src;
-
-    // data-original
-    src = img.attr("data-original");
-    if (src) return src.startsWith("//") ? "https:" + src : src;
-
-    // srcset
-    const srcset = img.attr("srcset");
-    if (srcset) {
-      const first = srcset.split(",")[0].trim().split(" ")[0];
-      return first.startsWith("//") ? "https:" + first : first;
+    if (!img) {
+      const srcset = $("img").attr("srcset");
+      if (srcset) img = srcset.split(",")[0].split(" ")[0];
     }
 
-    // Guardian <figure>
-    const fig = $("figure img").first().attr("src");
-    if (fig) return fig.startsWith("//") ? "https:" + fig : fig;
+    if (img && img.startsWith("//")) img = "https:" + img;
 
-    return null;
+    return img || null;
   } catch {
     return null;
   }
 }
 
-/* FETCH CATEGORY */
+/* OG IMAGE FALLBACK */
+async function tryFetchOgImage(url) {
+  if (!url) return null;
+
+  try {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 1500);
+    const res = await fetch(url, { signal: controller.signal });
+
+    if (!res.ok) return null;
+
+    const html = await res.text();
+    const $ = cheerio.load(html);
+
+    let og =
+      $('meta[property="og:image"]').attr("content") ||
+      $('meta[name="og:image"]').attr("content");
+
+    if (og && og.startsWith("//")) og = "https:" + og;
+
+    return og || null;
+  } catch {
+    return null;
+  }
+}
+
+/* MAIN CATEGORY FETCHER */
 export async function getCategoryNews(category, limit = 20) {
   const urls = FEEDS[category];
   if (!urls) return MOCK_NEWS[category] || [];
 
-  const all = [];
+  const allItems = [];
 
-  const groups = await Promise.all(
+  const feedResults = await Promise.all(
     urls.map(async (url) => {
       try {
         const feed = await parser.parseURL(url);
@@ -105,48 +120,43 @@ export async function getCategoryNews(category, limit = 20) {
           ...sanitizeItem(i),
           source: feed.title || "News",
         }));
-      } catch (err) {
-        console.error("Feed Error:", url, err?.message);
+      } catch {
         return [];
       }
     })
   );
 
-  groups.flat().forEach((i) => all.push(i));
+  feedResults.flat().forEach((i) => allItems.push(i));
 
-  // sort newest first
-  all.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+  allItems.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
-  // normalize
   const normalized = await Promise.all(
-    all.slice(0, limit).map(async (item) => {
+    allItems.slice(0, limit).map(async (item) => {
+      let htmlImg =
+        extractImageFromHtml(item.content) ||
+        extractImageFromHtml(item.contentEncoded);
+
       let thumbnail =
         item.mediaContent?.$?.url ||
         item.mediaThumbnail?.$?.url ||
-        item.mediaContent?.url ||
-        item.mediaThumbnail?.url ||
         item.enclosure?.url ||
-        extractImageFromHtml(item.content) ||
-        extractImageFromHtml(item.contentEncoded) ||
+        htmlImg ||
         null;
 
-      // fallback
-      if (!thumbnail) {
+      if (!thumbnail) thumbnail = await tryFetchOgImage(item.link);
+
+      if (!thumbnail)
         thumbnail =
           "https://images.unsplash.com/photo-1522199710521-72d69614c702?auto=format&fit=crop&w=1200&q=60";
-      }
 
-      if (thumbnail?.startsWith("//")) thumbnail = "https:" + thumbnail;
+      if (thumbnail.startsWith("//")) thumbnail = "https:" + thumbnail;
 
       return {
-        id: Buffer.from(item.link || item.title).toString("base64").slice(0, 16),
-        title: item.title || "Untitled",
+        id: encodeURIComponent(item.link), // FIXED UNIQUE ID
+        title: item.title,
         summary:
-          (item.contentSnippet || item.summary || "")
-            ?.toString()
-            .replace(/<[^>]+>/g, "")
-            .slice(0, 250) + "...",
-        date: isNaN(new Date(item.pubDate)) ? new Date().toISOString() : item.pubDate,
+          (item.contentSnippet || item.summary || "").slice(0, 250) + "...",
+        date: item.pubDate || new Date().toISOString(),
         thumbnail,
         link: item.link,
         source: item.source,
@@ -155,10 +165,10 @@ export async function getCategoryNews(category, limit = 20) {
     })
   );
 
-  return normalized.length ? normalized : MOCK_NEWS[category] || [];
+  return normalized;
 }
 
-/* HOMEPAGE */
+/* HOMEPAGE LOADER */
 export async function getAllNews() {
   const [world, tech, finance] = await Promise.all([
     getCategoryNews("world", 6),
@@ -168,7 +178,7 @@ export async function getAllNews() {
 
   const breaking = [...world, ...tech, ...finance]
     .sort((a, b) => new Date(b.date) - new Date(a.date))
-    .slice(0, 12);
+    .slice(0, 10);
 
   return { world, tech, finance, breaking };
 }
